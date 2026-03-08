@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "healthlog_v3";
 const SETTINGS_KEY = "healthlog_settings";
@@ -144,14 +152,10 @@ function calcStageForItem(key, entry, context) {
       if (!entry.bedtime) return null;
       const [hh, mm] = entry.bedtime.split(":").map(Number);
       const totalMin = hh * 60 + mm;
-      // 22:00(1320)〜23:59(1439) → score 2
-      // 00:01(1) 〜 00:59(59) → score 1  (翌0時台)
-      // ≥01:00(60) → score 0
-      // 0:00(0) = 深夜0時ちょうど → score 2
-      if (totalMin === 0) return 2; // 0:00ちょうど
-      if (totalMin >= 1320) return 2; // 22:00〜23:59
-      if (totalMin <= 59) return 1;  // 0:01〜0:59
-      return 0; // 1:00以降
+      if (totalMin === 0) return 2;
+      if (totalMin >= 1320) return 2;
+      if (totalMin <= 59) return 1;
+      return 0;
     }
     case "wakeupRegularity": {
       if (wakeupDeviation === null) return null;
@@ -193,7 +197,6 @@ function calcStageForItem(key, entry, context) {
       if (!entry.lastMealTime) return null;
       const [hh, mm] = entry.lastMealTime.split(":").map(Number);
       const totalMin = hh * 60 + mm;
-      // ≤19:00(1140) = ◎, 19:01〜20:59(1259) = △, ≥21:00(1260) = ✕
       if (totalMin <= 1140) return 2;
       if (totalMin <= 1259) return 1;
       return 0;
@@ -236,7 +239,6 @@ function calcStageForItem(key, entry, context) {
     case "urineColor": {
       const v = entry.urineColor;
       if (v === null || v === undefined) return null;
-      // Armstrong scale: 1-3=良好(淡), 4-5=やや不足, 6-8=脱水
       if (v <= 3) return 2;
       if (v <= 5) return 1;
       return 0;
@@ -322,34 +324,28 @@ function calcBMI(weight, height) {
 
 function NumericRating({ label, value, onChange, min = 0, max = 10, lowLabel = "低", highLabel = "高" }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#666", marginBottom: 4 }}>
+    <div className="mb-3.5">
+      <div className="flex justify-between text-xs text-gray-500 mb-1.5">
         <span>{label}</span>
-        <span style={{ fontWeight: 600, color: "#333" }}>{value !== null && value !== undefined ? value : "—"}</span>
+        <span className="font-semibold text-gray-700">{value !== null && value !== undefined ? value : "—"}</span>
       </div>
-      <div style={{ display: "flex", gap: 3 }}>
+      <div className="flex gap-0.5">
         {Array.from({ length: max - min + 1 }, (_, i) => min + i).map(v => (
           <button
             key={v}
             onClick={() => onChange(v)}
-            style={{
-              flex: 1,
-              padding: "5px 0",
-              fontSize: 11,
-              border: "1px solid",
-              borderRadius: 4,
-              cursor: "pointer",
-              background: value === v ? "#2563eb" : "#f3f4f6",
-              color: value === v ? "#fff" : "#555",
-              borderColor: value === v ? "#2563eb" : "#d1d5db",
-              fontWeight: value === v ? 700 : 400,
-            }}
+            className={cn(
+              "flex-1 min-h-[36px] text-[11px] border rounded cursor-pointer transition-all duration-150 active:scale-95",
+              value === v
+                ? "bg-blue-600 text-white border-blue-600 font-bold"
+                : "bg-gray-100 text-gray-500 border-gray-200"
+            )}
           >
             {v}
           </button>
         ))}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#9ca3af", marginTop: 2 }}>
+      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
         <span>{lowLabel}</span>
         <span>{highLabel}</span>
       </div>
@@ -359,23 +355,19 @@ function NumericRating({ label, value, onChange, min = 0, max = 10, lowLabel = "
 
 function ChipRow({ label, options, value, onChange }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      {label && <div style={{ fontSize: 12, color: "#666", marginBottom: 6 }}>{label}</div>}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    <div className="mb-3.5">
+      {label && <div className="text-xs text-gray-500 mb-1.5">{label}</div>}
+      <div className="flex gap-1.5 flex-wrap">
         {options.map(opt => (
           <button
             key={opt.value}
             onClick={() => onChange(value === opt.value ? null : opt.value)}
-            style={{
-              padding: "5px 12px",
-              border: "1px solid",
-              borderRadius: 16,
-              cursor: "pointer",
-              fontSize: 13,
-              background: value === opt.value ? "#2563eb" : "#f3f4f6",
-              color: value === opt.value ? "#fff" : "#555",
-              borderColor: value === opt.value ? "#2563eb" : "#d1d5db",
-            }}
+            className={cn(
+              "px-3 py-2 min-h-[36px] border rounded-full cursor-pointer text-sm transition-all duration-150 active:scale-95",
+              value === opt.value
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-gray-100 text-gray-500 border-gray-200"
+            )}
           >
             {opt.label}
           </button>
@@ -387,28 +379,18 @@ function ChipRow({ label, options, value, onChange }) {
 
 function FieldRow({ label, children, hint }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>{label}</div>
+    <div className="mb-4">
+      <div className="text-xs font-medium text-gray-500 mb-1.5">{label}</div>
       {children}
-      {hint && <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>{hint}</div>}
+      {hint && <div className="text-xs text-gray-400 mt-1">{hint}</div>}
     </div>
   );
 }
 
-const inputStyle = {
-  width: "100%",
-  padding: "8px 10px",
-  border: "1px solid #d1d5db",
-  borderRadius: 8,
-  fontSize: 14,
-  outline: "none",
-  boxSizing: "border-box",
-};
-
 function NumberInput({ value, onChange, placeholder, unit, min, max, step = 1 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input
+    <div className="flex items-center gap-2">
+      <Input
         type="number"
         value={value}
         onChange={e => onChange(e.target.value)}
@@ -416,27 +398,21 @@ function NumberInput({ value, onChange, placeholder, unit, min, max, step = 1 })
         min={min}
         max={max}
         step={step}
-        style={{ ...inputStyle, flex: 1 }}
+        className="flex-1 h-10 text-sm"
       />
-      {unit && <span style={{ fontSize: 13, color: "#666", whiteSpace: "nowrap" }}>{unit}</span>}
+      {unit && <span className="text-sm text-gray-500 whitespace-nowrap">{unit}</span>}
     </div>
   );
 }
 
-function Card({ title, children, accent }) {
+function AppCard({ title, children, accent }) {
   return (
-    <div style={{
-      background: "#fff",
-      borderRadius: 12,
-      padding: "14px 16px",
-      marginBottom: 12,
-      boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
-      borderLeft: accent ? `4px solid ${accent}` : undefined,
-    }}>
+    <div
+      className="bg-white rounded-2xl px-4 py-4 mb-4 shadow-sm"
+      style={accent ? { borderLeft: `4px solid ${accent}` } : undefined}
+    >
       {title && (
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#374151", marginBottom: 12, letterSpacing: "0.03em" }}>
-          {title}
-        </div>
+        <div className="text-sm font-bold text-gray-700 mb-3">{title}</div>
       )}
       {children}
     </div>
@@ -445,29 +421,33 @@ function Card({ title, children, accent }) {
 
 function ScoreBadge({ score, grade, size = "md" }) {
   if (score === null) return (
-    <div style={{ fontSize: size === "lg" ? 14 : 12, color: "#9ca3af" }}>
-      スコア未算出<br /><span style={{ fontSize: 10 }}>(10項目以上記録で表示)</span>
+    <div className={cn("text-gray-400", size === "lg" ? "text-sm" : "text-xs")}>
+      スコア未算出<br /><span className="text-[10px]">(10項目以上記録で表示)</span>
     </div>
   );
   const big = size === "lg";
   return (
-    <div style={{ textAlign: "center" }}>
-      <div style={{
-        fontSize: big ? 48 : 28,
-        fontWeight: 900,
-        color: grade.color,
-        lineHeight: 1,
-      }}>
+    <div className={cn("text-center", big ? "w-32" : "")}>
+      <div
+        className={cn("font-black leading-none tabular-nums", big ? "text-6xl" : "text-[28px]")}
+        style={{ color: grade.color }}
+      >
         {score}
       </div>
-      <div style={{
-        fontSize: big ? 22 : 14,
-        fontWeight: 700,
-        color: grade.color,
-        marginTop: 2,
-      }}>
+      <div
+        className={cn("font-bold mt-0.5 tracking-tight", big ? "text-2xl" : "text-sm")}
+        style={{ color: grade.color }}
+      >
         {grade.label}
       </div>
+      {big && (
+        <div className="h-2 rounded-full bg-gray-100 overflow-hidden mt-2">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${score}%`, background: grade.color }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -483,22 +463,19 @@ function ScoreDetailPanel({ details, isHoliday }) {
     <div>
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0, marginTop: 8 }}
+        className="text-xs text-blue-600 bg-transparent border-none cursor-pointer p-0 mt-2"
       >
         {open ? "▲ スコア詳細を閉じる" : "▼ スコア詳細を見る"}
       </button>
       {open && (
-        <div style={{ marginTop: 8 }}>
+        <div className="mt-2">
           {shown.map(d => (
-            <div key={d.key} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "5px 0", borderBottom: "1px solid #f3f4f6", fontSize: 12,
-            }}>
-              <span style={{ color: "#374151" }}>{d.label}</span>
-              <span style={{
-                fontWeight: 700, fontSize: 14,
-                color: d.isRecorded ? stageColor(d.stage) : "#d1d5db",
-              }}>
+            <div key={d.key} className="flex items-center justify-between py-1 border-b border-gray-100 text-xs">
+              <span className="text-gray-700">{d.label}</span>
+              <span
+                className="font-bold text-sm"
+                style={{ color: d.isRecorded ? stageColor(d.stage) : "#d1d5db" }}
+              >
                 {d.isRecorded ? stageLabel(d.stage) : "—"}
               </span>
             </div>
@@ -509,179 +486,166 @@ function ScoreDetailPanel({ details, isHoliday }) {
   );
 }
 
-function CoffeeInfoPanel() {
+function InfoPanel({ toggleLabel, closeLabel, children }) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 8 }}>
+    <div className="mt-2">
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        className="text-xs text-blue-600 bg-transparent border-none cursor-pointer p-0"
       >
-        {open ? "▲ コーヒーと健康の文献情報を閉じる" : "▼ コーヒーと健康の文献情報を見る"}
+        {open ? closeLabel : toggleLabel}
       </button>
       {open && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "#374151", background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>コーヒーの健康への影響（文献ベース）</div>
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontWeight: 600, color: "#16a34a", marginBottom: 4 }}>✓ 適量(1〜4杯/日)のメリット</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>2型糖尿病リスク低下（1杯増で6%減）[Ding et al., Diabetes Care 2014]</li>
-              <li>心血管疾患死亡リスク低下（3〜5杯/日で最低）[Poole et al., BMJ 2017]</li>
-              <li>神経変性疾患(パーキンソン・アルツハイマー)リスク低下 [Ross et al., JAMA 2000]</li>
-              <li>肝疾患・肝硬変リスク低下 [Kennedy et al., Aliment Pharmacol Ther 2016]</li>
-            </ul>
-          </div>
-          <div style={{ marginBottom: 10 }}>
-            <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>✗ 過剰摂取・注意点</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>不安・不眠悪化（カフェイン半減期5〜6時間）</li>
-              <li>骨密度低下・胃酸分泌増加（大量摂取時）</li>
-              <li>妊婦・授乳中は200mg/日以下推奨 [EFSA 2015]</li>
-              <li>非フィルタードコーヒーはLDL上昇の可能性 [Urgert & Katan, NEJM 1997]</li>
-            </ul>
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <div style={{ fontWeight: 600, color: "#374151", marginBottom: 4 }}>◯ 飲まない場合</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>カフェイン依存・離脱症状なし</li>
-              <li>睡眠の質が改善する場合あり（特に午後摂取を避ける効果）</li>
-              <li>胃食道逆流症(GERD)の改善</li>
-            </ul>
-          </div>
-          <div style={{ marginTop: 8, fontSize: 11, color: "#9ca3af" }}>
-            ※ 1杯の定義：欧米研究では237mL(8oz)のレギュラーコーヒー(カフェイン約80-100mg)。日本のコンビニコーヒーSサイズは約120mL。
-          </div>
+        <div className="mt-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-sm text-gray-700">
+          {children}
         </div>
       )}
     </div>
+  );
+}
+
+function CoffeeInfoPanel() {
+  return (
+    <InfoPanel
+      toggleLabel="▼ コーヒーと健康の文献情報を見る"
+      closeLabel="▲ コーヒーと健康の文献情報を閉じる"
+    >
+      <div className="font-bold mb-2">コーヒーの健康への影響（文献ベース）</div>
+      <div className="mb-2.5">
+        <div className="font-semibold text-green-700 mb-1">✓ 適量(1〜4杯/日)のメリット</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>2型糖尿病リスク低下（1杯増で6%減）[Ding et al., Diabetes Care 2014]</li>
+          <li>心血管疾患死亡リスク低下（3〜5杯/日で最低）[Poole et al., BMJ 2017]</li>
+          <li>神経変性疾患(パーキンソン・アルツハイマー)リスク低下 [Ross et al., JAMA 2000]</li>
+          <li>肝疾患・肝硬変リスク低下 [Kennedy et al., Aliment Pharmacol Ther 2016]</li>
+        </ul>
+      </div>
+      <div className="mb-2.5">
+        <div className="font-semibold text-red-600 mb-1">✗ 過剰摂取・注意点</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>不安・不眠悪化（カフェイン半減期5〜6時間）</li>
+          <li>骨密度低下・胃酸分泌増加（大量摂取時）</li>
+          <li>妊婦・授乳中は200mg/日以下推奨 [EFSA 2015]</li>
+          <li>非フィルタードコーヒーはLDL上昇の可能性 [Urgert & Katan, NEJM 1997]</li>
+        </ul>
+      </div>
+      <div className="mb-1">
+        <div className="font-semibold text-gray-700 mb-1">◯ 飲まない場合</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>カフェイン依存・離脱症状なし</li>
+          <li>睡眠の質が改善する場合あり（特に午後摂取を避ける効果）</li>
+          <li>胃食道逆流症(GERD)の改善</li>
+        </ul>
+      </div>
+      <div className="mt-2 text-[11px] text-gray-400">
+        ※ 1杯の定義：欧米研究では237mL(8oz)のレギュラーコーヒー(カフェイン約80-100mg)。日本のコンビニコーヒーSサイズは約120mL。
+      </div>
+    </InfoPanel>
   );
 }
 
 function SocialInfoPanel() {
-  const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-      >
-        {open ? "▲ 社会的交流と健康の文献情報を閉じる" : "▼ なぜ社会的交流が重要？文献情報を見る"}
-      </button>
-      {open && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "#374151", background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>社会的つながりと健康・寿命</div>
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>✗ 孤独・社会的孤立のリスク</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>全死亡リスク29%増加、孤独感は26%増加 [Holt-Lunstad et al., Perspectives on Psychological Science 2015 — 148研究・308,849人メタ分析]</li>
-              <li>影響はタバコ15本/日、肥満・運動不足を上回ると試算</li>
-              <li>認知症リスク増加 [Livingston et al., Lancet Commission 2020]</li>
-              <li>うつ・不安症の主要リスク因子 [Cacioppo & Hawkley, 2010]</li>
-              <li>炎症マーカー(CRP・IL-6)上昇との関連 [Steptoe et al., PNAS 2013]</li>
-            </ul>
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <div style={{ fontWeight: 600, color: "#16a34a", marginBottom: 4 }}>✓ 交流がある場合のメリット</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>オキシトシン分泌→ストレスホルモン(コルチゾール)低下</li>
-              <li>血圧・心拍数の安定化</li>
-              <li>目的意識・幸福感の向上 [Steptoe & Wardle, PNAS 2014]</li>
-            </ul>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
-            ※ SNS・テキストのみは効果が弱い。音声/対面会話を優先してカウント
-          </div>
-        </div>
-      )}
-    </div>
+    <InfoPanel
+      toggleLabel="▼ なぜ社会的交流が重要？文献情報を見る"
+      closeLabel="▲ 社会的交流と健康の文献情報を閉じる"
+    >
+      <div className="font-bold mb-2">社会的つながりと健康・寿命</div>
+      <div className="mb-2">
+        <div className="font-semibold text-red-600 mb-1">✗ 孤独・社会的孤立のリスク</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>全死亡リスク29%増加、孤独感は26%増加 [Holt-Lunstad et al., Perspectives on Psychological Science 2015 — 148研究・308,849人メタ分析]</li>
+          <li>影響はタバコ15本/日、肥満・運動不足を上回ると試算</li>
+          <li>認知症リスク増加 [Livingston et al., Lancet Commission 2020]</li>
+          <li>うつ・不安症の主要リスク因子 [Cacioppo & Hawkley, 2010]</li>
+          <li>炎症マーカー(CRP・IL-6)上昇との関連 [Steptoe et al., PNAS 2013]</li>
+        </ul>
+      </div>
+      <div className="mb-1">
+        <div className="font-semibold text-green-700 mb-1">✓ 交流がある場合のメリット</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>オキシトシン分泌→ストレスホルモン(コルチゾール)低下</li>
+          <li>血圧・心拍数の安定化</li>
+          <li>目的意識・幸福感の向上 [Steptoe & Wardle, PNAS 2014]</li>
+        </ul>
+      </div>
+      <div className="mt-1.5 text-[11px] text-gray-400">
+        ※ SNS・テキストのみは効果が弱い。音声/対面会話を優先してカウント
+      </div>
+    </InfoPanel>
   );
 }
 
 function LastMealInfoPanel() {
-  const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-      >
-        {open ? "▲ 最終食事時刻と健康の文献情報を閉じる" : "▼ なぜ食事時刻が重要？文献情報を見る"}
-      </button>
-      {open && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "#374151", background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>時間制限食(TRE)と代謝・健康</div>
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontWeight: 600, color: "#16a34a", marginBottom: 4 }}>✓ 早い時刻に食べ終わるメリット</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>インスリン感受性・血糖コントロール改善 [Sutton et al., Cell Metabolism 2018 — RCT]</li>
-              <li>収縮期血圧低下・酸化ストレス軽減 [同上]</li>
-              <li>代謝症候群の改善(体重・脂肪量・血圧・コレステロール) [Wilkinson et al., Cell Metabolism 2020 — 12週間RCT]</li>
-              <li>睡眠の質改善（就寝時の消化負担軽減）</li>
-              <li>概日リズム(体内時計)の安定化 [Longo & Panda, Cell Metabolism 2016]</li>
-            </ul>
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>✗ 夜遅い食事のリスク</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>21時以降の食事は肥満・メタボリックシンドロームと関連 [Wang et al., JCEM 2020]</li>
-              <li>夜間の高血糖・インスリン分泌増加</li>
-              <li>睡眠中の胃食道逆流(GERD)リスク増加</li>
-            </ul>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
-            ※ 目安: 就寝2〜3時間前までに食事を終える。間食・飲料(水・お茶を除く)もカウント
-          </div>
-        </div>
-      )}
-    </div>
+    <InfoPanel
+      toggleLabel="▼ なぜ食事時刻が重要？文献情報を見る"
+      closeLabel="▲ 最終食事時刻と健康の文献情報を閉じる"
+    >
+      <div className="font-bold mb-2">時間制限食(TRE)と代謝・健康</div>
+      <div className="mb-2">
+        <div className="font-semibold text-green-700 mb-1">✓ 早い時刻に食べ終わるメリット</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>インスリン感受性・血糖コントロール改善 [Sutton et al., Cell Metabolism 2018 — RCT]</li>
+          <li>収縮期血圧低下・酸化ストレス軽減 [同上]</li>
+          <li>代謝症候群の改善(体重・脂肪量・血圧・コレステロール) [Wilkinson et al., Cell Metabolism 2020 — 12週間RCT]</li>
+          <li>睡眠の質改善（就寝時の消化負担軽減）</li>
+          <li>概日リズム(体内時計)の安定化 [Longo & Panda, Cell Metabolism 2016]</li>
+        </ul>
+      </div>
+      <div className="mb-1">
+        <div className="font-semibold text-red-600 mb-1">✗ 夜遅い食事のリスク</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>21時以降の食事は肥満・メタボリックシンドロームと関連 [Wang et al., JCEM 2020]</li>
+          <li>夜間の高血糖・インスリン分泌増加</li>
+          <li>睡眠中の胃食道逆流(GERD)リスク増加</li>
+        </ul>
+      </div>
+      <div className="mt-1.5 text-[11px] text-gray-400">
+        ※ 目安: 就寝2〜3時間前までに食事を終える。間食・飲料(水・お茶を除く)もカウント
+      </div>
+    </InfoPanel>
   );
 }
 
 function UpfInfoPanel() {
-  const [open, setOpen] = useState(false);
   return (
-    <div style={{ marginTop: 8 }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
-      >
-        {open ? "▲ 超加工食品と健康の文献情報を閉じる" : "▼ 超加工食品とは？文献情報を見る"}
-      </button>
-      {open && (
-        <div style={{ marginTop: 10, fontSize: 12, color: "#374151", background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>超加工食品（UPF）の健康への影響</div>
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontWeight: 600, color: "#374151", marginBottom: 4 }}>NOVA分類4とは</div>
-            <p style={{ margin: 0, lineHeight: 1.8 }}>
-              Monteiro et al.が提唱する食品加工度分類。UPFは工業的製造工程で作られ、食品添加物(乳化剤・甘味料・着色料等)を多く含む。
-              代表例: スナック菓子、菓子パン、清涼飲料水、インスタント麺、加工肉、市販アイスクリーム。
-            </p>
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ fontWeight: 600, color: "#dc2626", marginBottom: 4 }}>✗ リスクとのエビデンス</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>全死亡・心血管疾患リスク上昇 [Srour et al., BMJ 2019; 10万人超のNutriNet-Santé]</li>
-              <li>2型糖尿病リスク増加 [Levy et al., Diabetes Care 2021]</li>
-              <li>大腸がんリスク増加 [Fiolet et al., BMJ 2018]</li>
-              <li>うつ病・不安症との関連 [Lane et al., Nutritional Neuroscience 2022]</li>
-              <li>腸内細菌叢の多様性低下 [UK Biobank; Wastyk et al., Cell 2021]</li>
-              <li>RCTでも過剰カロリー摂取・体重増加を確認 [Hall et al., Cell Metabolism 2019]</li>
-            </ul>
-          </div>
-          <div style={{ marginBottom: 4 }}>
-            <div style={{ fontWeight: 600, color: "#374151", marginBottom: 4 }}>◯ 置き換えの目安</div>
-            <ul style={{ margin: 0, paddingLeft: 16, lineHeight: 1.8 }}>
-              <li>スナック→ナッツ・果物・ヨーグルト</li>
-              <li>清涼飲料水→水・お茶・無糖コーヒー</li>
-              <li>菓子パン→全粒粉パン・自炊</li>
-            </ul>
-          </div>
-          <div style={{ marginTop: 6, fontSize: 11, color: "#9ca3af" }}>
-            ※ 記録方法: 1日のうち昼・夜・間食でUPFを食べた回数をカウント
-          </div>
-        </div>
-      )}
-    </div>
+    <InfoPanel
+      toggleLabel="▼ 超加工食品とは？文献情報を見る"
+      closeLabel="▲ 超加工食品と健康の文献情報を閉じる"
+    >
+      <div className="font-bold mb-2">超加工食品（UPF）の健康への影響</div>
+      <div className="mb-2">
+        <div className="font-semibold text-gray-700 mb-1">NOVA分類4とは</div>
+        <p className="m-0 leading-7">
+          Monteiro et al.が提唱する食品加工度分類。UPFは工業的製造工程で作られ、食品添加物(乳化剤・甘味料・着色料等)を多く含む。
+          代表例: スナック菓子、菓子パン、清涼飲料水、インスタント麺、加工肉、市販アイスクリーム。
+        </p>
+      </div>
+      <div className="mb-2">
+        <div className="font-semibold text-red-600 mb-1">✗ リスクとのエビデンス</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>全死亡・心血管疾患リスク上昇 [Srour et al., BMJ 2019; 10万人超のNutriNet-Santé]</li>
+          <li>2型糖尿病リスク増加 [Levy et al., Diabetes Care 2021]</li>
+          <li>大腸がんリスク増加 [Fiolet et al., BMJ 2018]</li>
+          <li>うつ病・不安症との関連 [Lane et al., Nutritional Neuroscience 2022]</li>
+          <li>腸内細菌叢の多様性低下 [UK Biobank; Wastyk et al., Cell 2021]</li>
+          <li>RCTでも過剰カロリー摂取・体重増加を確認 [Hall et al., Cell Metabolism 2019]</li>
+        </ul>
+      </div>
+      <div className="mb-1">
+        <div className="font-semibold text-gray-700 mb-1">◯ 置き換えの目安</div>
+        <ul className="m-0 pl-4 leading-7">
+          <li>スナック→ナッツ・果物・ヨーグルト</li>
+          <li>清涼飲料水→水・お茶・無糖コーヒー</li>
+          <li>菓子パン→全粒粉パン・自炊</li>
+        </ul>
+      </div>
+      <div className="mt-1.5 text-[11px] text-gray-400">
+        ※ 記録方法: 1日のうち昼・夜・間食でUPFを食べた回数をカウント
+      </div>
+    </InfoPanel>
   );
 }
 
@@ -697,24 +661,21 @@ function XPostPanel({ entry, score, grade }) {
   ].filter(Boolean).join("\n");
   const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(lines)}`;
   return (
-    <div style={{ marginTop: 8 }}>
+    <div className="mt-2">
       <button
         onClick={() => setOpen(o => !o)}
-        style={{ fontSize: 12, color: "#2563eb", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        className="text-xs text-blue-600 bg-transparent border-none cursor-pointer p-0"
       >
         {open ? "▲ X(Twitter)投稿文を閉じる" : "▼ X(Twitter)に投稿する"}
       </button>
       {open && (
-        <div style={{ marginTop: 8, padding: 10, background: "#f0f9ff", borderRadius: 8, fontSize: 12 }}>
-          <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap", color: "#374151" }}>{lines}</pre>
+        <div className="mt-2 p-3 rounded-xl bg-blue-50 border border-blue-100 text-sm text-gray-700">
+          <pre className="m-0 font-[inherit] whitespace-pre-wrap text-gray-700">{lines}</pre>
           <a
             href={url}
             target="_blank"
             rel="noreferrer"
-            style={{
-              display: "inline-block", marginTop: 8, padding: "6px 14px",
-              background: "#000", color: "#fff", borderRadius: 8, textDecoration: "none", fontSize: 12, fontWeight: 600,
-            }}
+            className="inline-block mt-2 px-3.5 py-1.5 bg-black text-white rounded-lg no-underline text-xs font-semibold"
           >
             X に投稿 →
           </a>
@@ -790,58 +751,54 @@ export default function App() {
 
   // ─── Today Tab ──────────────────────────────────────────────
   const TodayTab = () => (
-    <div style={{ paddingBottom: 80 }}>
+    <div className="pb-20">
       {/* Header Score */}
-      <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <AppCard>
+        <div className="flex justify-between items-center">
           <div>
-            <div style={{ fontSize: 13, color: "#6b7280" }}>
+            <div className="text-sm font-semibold text-gray-900">
               {isPastEntry ? `📅 ${entry.date}（過去）` : `📅 ${entry.date} (今日)`}
             </div>
-            <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>記録済み {recordedCount}/20項目</div>
+            <div className="text-xs text-gray-500 mt-1">記録済み {recordedCount}/20項目</div>
             {streak > 1 && (
-              <div style={{ fontSize: 12, color: "#f59e0b", marginTop: 2 }}>🔥 {streak}日連続記録中</div>
+              <div className="text-xs text-amber-600 font-medium mt-1">🔥 {streak}日連続記録中</div>
             )}
           </div>
           <ScoreBadge score={score} grade={grade} size="lg" />
         </div>
         <ScoreDetailPanel details={details} isHoliday={entry.isHoliday} />
         {score !== null && <XPostPanel entry={entry} score={score} grade={grade} />}
-      </Card>
+      </AppCard>
 
       {isPastEntry && (
-        <div style={{
-          background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, padding: "8px 12px",
-          marginBottom: 12, fontSize: 13, color: "#92400e",
-        }}>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 text-sm text-amber-800">
           ⚠️ 過去のデータを編集中です。保存で上書きされます。
         </div>
       )}
 
       {/* Holiday Toggle */}
-      <Card>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 14, color: "#374151" }}>休日モード</span>
+      <AppCard>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-gray-700">休日モード</span>
           <button
             onClick={() => set("isHoliday", !entry.isHoliday)}
-            style={{
-              padding: "5px 14px", borderRadius: 16, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
-              background: entry.isHoliday ? "#7c3aed" : "#e5e7eb",
-              color: entry.isHoliday ? "#fff" : "#374151",
-            }}
+            className={cn(
+              "px-4 py-2 min-h-[36px] rounded-full border-none cursor-pointer text-sm font-semibold transition-all duration-150 active:scale-95",
+              entry.isHoliday ? "bg-violet-700 text-white" : "bg-gray-200 text-gray-700"
+            )}
           >
             {entry.isHoliday ? "ON (休日)" : "OFF (平日)"}
           </button>
         </div>
         {entry.isHoliday && (
-          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>
+          <div className="text-xs text-gray-400 mt-1.5">
             休日時は「座位時間・座位中断・残業」をスコア除外
           </div>
         )}
-      </Card>
+      </AppCard>
 
       {/* Activity */}
-      <Card title="🏃 活動" accent="#2563eb">
+      <AppCard title="🏃 活動" accent="#2563eb">
         <FieldRow label="歩数" hint="目安: 7000歩以上 ◎">
           <NumberInput value={entry.steps} onChange={v => set("steps", v)} placeholder="例: 8500" unit="歩" min={0} />
         </FieldRow>
@@ -856,24 +813,24 @@ export default function App() {
             <NumberInput value={entry.sittingBreaks} onChange={v => set("sittingBreaks", v)} placeholder="例: 10" unit="回" min={0} />
           </FieldRow>
         </>}
-      </Card>
+      </AppCard>
 
       {/* Sleep */}
-      <Card title="😴 睡眠" accent="#7c3aed">
-        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+      <AppCard title="😴 睡眠" accent="#7c3aed">
+        <div className="flex gap-3 mb-4">
           <FieldRow label="就寝時刻">
-            <input type="time" value={entry.bedtime} onChange={e => set("bedtime", e.target.value)} style={inputStyle} />
+            <Input type="time" value={entry.bedtime} onChange={e => set("bedtime", e.target.value)} className="h-10 text-sm" />
           </FieldRow>
           <FieldRow label="起床時刻">
-            <input type="time" value={entry.wakeup} onChange={e => set("wakeup", e.target.value)} style={inputStyle} />
+            <Input type="time" value={entry.wakeup} onChange={e => set("wakeup", e.target.value)} className="h-10 text-sm" />
           </FieldRow>
         </div>
         {sleepH !== null && (
-          <div style={{ fontSize: 13, color: "#374151", marginBottom: 10, padding: "6px 10px", background: "#f0f9ff", borderRadius: 6 }}>
+          <div className="text-sm text-gray-700 mb-3 px-3 py-2 bg-sky-50 rounded-xl border border-sky-100">
             睡眠時間: <strong>{sleepH}時間</strong>
             {sleepH >= 7 && sleepH <= 8
-              ? " ✓ 最適"
-              : sleepH >= 6 ? " △ やや短い/長い" : " ✕ 要改善"}
+              ? <span className="text-green-600 font-medium"> ✓ 最適</span>
+              : sleepH >= 6 ? <span className="text-amber-600 font-medium"> △ やや短い/長い</span> : <span className="text-red-600 font-medium"> ✕ 要改善</span>}
           </div>
         )}
         <FieldRow label="就寝前スクリーン時間" hint="目安: 30分未満 ◎">
@@ -886,15 +843,15 @@ export default function App() {
           lowLabel="不満"
           highLabel="満足"
         />
-      </Card>
+      </AppCard>
 
       {/* Nutrition */}
-      <Card title="🥗 栄養・食事" accent="#16a34a">
+      <AppCard title="🥗 栄養・食事" accent="#16a34a">
         <FieldRow
           label="尿の色（水分補給状態）"
           hint="Armstrong尺度: 1-3=良好 ◎ / 4-5=やや不足 △ / 6-8=脱水 ✕"
         >
-          <div style={{ display: "flex", gap: 3 }}>
+          <div className="flex gap-0.5">
             {[
               { v: 1, label: "1", bg: "#fef9c3" },
               { v: 2, label: "2", bg: "#fef08a" },
@@ -908,25 +865,20 @@ export default function App() {
               <button
                 key={v}
                 onClick={() => set("urineColor", entry.urineColor === v ? null : v)}
-                style={{
-                  flex: 1,
-                  padding: "8px 0",
-                  fontSize: 12,
-                  border: "2px solid",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  background: bg,
-                  color: v >= 6 ? "#fff" : "#374151",
-                  borderColor: entry.urineColor === v ? "#2563eb" : "transparent",
-                  fontWeight: entry.urineColor === v ? 700 : 400,
-                  outline: entry.urineColor === v ? "2px solid #2563eb" : "none",
-                }}
+                className={cn(
+                  "flex-1 min-h-[36px] py-2 text-xs rounded-lg cursor-pointer transition-all duration-150 active:scale-95",
+                  v >= 6 ? "text-white" : "text-gray-700",
+                  entry.urineColor === v
+                    ? "ring-2 ring-offset-1 ring-blue-500 scale-110 font-bold"
+                    : "opacity-70 hover:opacity-100"
+                )}
+                style={{ background: bg }}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#9ca3af", marginTop: 3 }}>
+          <div className="flex justify-between text-[10px] text-gray-400 mt-0.5">
             <span>◎ 良好(淡)</span>
             <span>△ やや不足</span>
             <span>✕ 脱水(濃)</span>
@@ -959,27 +911,27 @@ export default function App() {
           />
         </FieldRow>
         <FieldRow label={`コーヒー (${entry.coffee}杯)`}>
-          <input
-            type="range"
+          <Slider
             min={0}
             max={8}
-            value={entry.coffee}
-            onChange={e => set("coffee", Number(e.target.value))}
-            style={{ width: "100%" }}
+            step={1}
+            value={[entry.coffee]}
+            onValueChange={([v]) => set("coffee", v)}
+            className="w-full"
           />
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#9ca3af" }}>
+          <div className="flex justify-between text-[11px] text-gray-400 mt-1">
             <span>0杯</span><span>4杯</span><span>8杯</span>
           </div>
           <CoffeeInfoPanel />
         </FieldRow>
-      </Card>
+      </AppCard>
 
       {/* Vitals */}
-      <Card title="💊 体重・交流・食事時間" accent="#dc2626">
+      <AppCard title="💊 体重・交流・食事時間" accent="#dc2626">
         <FieldRow label="体重" hint={settings.targetWeight ? `目標体重: ${settings.targetWeight}kg` : "設定タブで目標体重を設定"}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div className="flex items-center gap-2">
             <NumberInput value={entry.weight} onChange={v => set("weight", v)} placeholder="例: 65.0" unit="kg" min={30} max={200} step={0.1} />
-            {bmi && <span style={{ fontSize: 12, color: "#666", whiteSpace: "nowrap" }}>BMI: {bmi}</span>}
+            {bmi && <span className="text-xs text-gray-500 whitespace-nowrap">BMI: {bmi}</span>}
           </div>
         </FieldRow>
         <FieldRow
@@ -1002,18 +954,18 @@ export default function App() {
           label="最終食事・間食の時刻"
           hint="目安: 19:00以前 ◎ / 19:01〜20:59 △ / 21:00以降 ✕"
         >
-          <input
+          <Input
             type="time"
             value={entry.lastMealTime}
             onChange={e => set("lastMealTime", e.target.value)}
-            style={inputStyle}
+            className="h-10 text-sm"
           />
           <LastMealInfoPanel />
         </FieldRow>
-      </Card>
+      </AppCard>
 
       {/* Mental */}
-      <Card title="🧠 メンタル・主観" accent="#f59e0b">
+      <AppCard title="🧠 メンタル・主観" accent="#f59e0b">
         <NumericRating
           label="疲労感 (0〜10)"
           value={entry.fatigue}
@@ -1038,52 +990,49 @@ export default function App() {
         <FieldRow label="朝の屋外時間" hint="目安: 15分以上 ◎ | 朝日光でサーカディアンリズム調整">
           <NumberInput value={entry.morningOutdoor} onChange={v => set("morningOutdoor", v)} placeholder="例: 15" unit="分" min={0} />
         </FieldRow>
-      </Card>
+      </AppCard>
 
       {/* Work */}
       {!entry.isHoliday && (
-        <Card title="💼 仕事" accent="#6b7280">
+        <AppCard title="💼 仕事" accent="#6b7280">
           <FieldRow label="残業時間" hint="目安: 60分未満 ◎">
             <NumberInput value={entry.overtime} onChange={v => set("overtime", v)} placeholder="例: 30" unit="分" min={0} />
           </FieldRow>
-        </Card>
+        </AppCard>
       )}
 
       {/* Memo */}
-      <Card title="📝 メモ">
+      <AppCard title="📝 メモ">
         <textarea
           value={entry.memo}
           onChange={e => set("memo", e.target.value)}
           placeholder="今日の気づき・体調メモ…"
           rows={3}
-          style={{ ...inputStyle, resize: "vertical" }}
+          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none box-border resize-y focus:border-blue-400 focus:ring-1 focus:ring-blue-200 transition-colors"
         />
-      </Card>
+      </AppCard>
 
       {/* Date Jump */}
-      <Card>
+      <AppCard>
         <FieldRow label="別の日付を開く">
-          <input
+          <Input
             type="date"
             value={entry.date}
             max={todayStr()}
             onChange={e => loadDateEntry(e.target.value)}
-            style={inputStyle}
+            className="h-10 text-sm"
           />
         </FieldRow>
-      </Card>
+      </AppCard>
 
       {/* Save Button */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, padding: "12px 16px", background: "#fff", boxShadow: "0 -1px 8px rgba(0,0,0,0.1)", zIndex: 100 }}>
-        <button
+      <div className="fixed bottom-0 left-0 right-0 px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] bg-white/90 backdrop-blur-sm border-t border-gray-100 z-[100]">
+        <Button
           onClick={saveEntry}
-          style={{
-            width: "100%", padding: "13px", background: "#2563eb", color: "#fff",
-            border: "none", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer",
-          }}
+          className="w-full rounded-xl text-base font-semibold min-h-[52px] h-auto transition-all duration-150 active:scale-95"
         >
           {isPastEntry ? "過去データを更新" : "今日の記録を保存"}
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -1093,53 +1042,44 @@ export default function App() {
     const [filter, setFilter] = useState("all");
     const filtered = filter === "all" ? sortedLogs : sortedLogs.filter(l => l.isHoliday === (filter === "holiday"));
     return (
-      <div style={{ paddingBottom: 20 }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+      <div className="pb-5">
+        <div className="flex gap-2 mb-4">
           {[["all", "全て"], ["weekday", "平日"], ["holiday", "休日"]].map(([v, l]) => (
-            <button key={v} onClick={() => setFilter(v)} style={{
-              padding: "5px 12px", borderRadius: 16, border: "1px solid",
-              background: filter === v ? "#2563eb" : "#f3f4f6",
-              color: filter === v ? "#fff" : "#555",
-              borderColor: filter === v ? "#2563eb" : "#d1d5db",
-              fontSize: 13, cursor: "pointer",
-            }}>{l}</button>
+            <button key={v} onClick={() => setFilter(v)} className={cn(
+              "px-4 py-2 min-h-[36px] rounded-full border text-sm cursor-pointer transition-all duration-150 active:scale-95",
+              filter === v
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-gray-100 text-gray-500 border-gray-200"
+            )}>{l}</button>
           ))}
         </div>
         {filtered.length === 0 && (
-          <div style={{ textAlign: "center", color: "#9ca3af", marginTop: 40 }}>記録がありません</div>
+          <div className="text-center text-gray-400 mt-10">記録がありません</div>
         )}
         {filtered.map(log => {
           const { score, grade } = calcHealthScore(log, sortedLogs.filter(l => l.date < log.date), settings);
           const sh = calcSleep(log.bedtime, log.wakeup);
           return (
-            <div key={log.id} style={{
-              background: "#fff", borderRadius: 10, padding: "12px 14px", marginBottom: 8,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.07)",
-              borderLeft: grade ? `4px solid ${grade.color}` : "4px solid #e5e7eb",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div key={log.id} className="bg-white rounded-2xl px-4 py-3.5 mb-3 shadow-sm"
+              style={{ borderLeft: grade ? `4px solid ${grade.color}` : "4px solid #e5e7eb" }}
+            >
+              <div className="flex justify-between items-start">
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14 }}>
+                  <div className="font-bold text-sm text-gray-900">
                     {log.date} {log.isHoliday ? "🏖" : ""}
                   </div>
-                  <div style={{ fontSize: 12, color: "#6b7280", marginTop: 4 }}>
+                  <div className="text-xs text-gray-500 mt-1">
                     {log.steps ? `👟 ${Number(log.steps).toLocaleString()}歩` : ""}
                     {sh ? ` 😴 ${sh}h` : ""}
                     {log.weight ? ` ⚖️ ${log.weight}kg` : ""}
                   </div>
-                  {log.memo && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{log.memo.slice(0, 40)}{log.memo.length > 40 ? "…" : ""}</div>}
+                  {log.memo && <div className="text-xs text-gray-500 mt-0.5">{log.memo.slice(0, 40)}{log.memo.length > 40 ? "…" : ""}</div>}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                <div className="flex flex-col items-end gap-2">
                   <ScoreBadge score={score} grade={grade} size="sm" />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => loadDateEntry(log.date)} style={{
-                      fontSize: 12, padding: "3px 8px", border: "1px solid #d1d5db",
-                      borderRadius: 6, background: "#f3f4f6", cursor: "pointer", color: "#374151",
-                    }}>編集</button>
-                    <button onClick={() => deleteLog(log.id)} style={{
-                      fontSize: 12, padding: "3px 8px", border: "1px solid #fca5a5",
-                      borderRadius: 6, background: "#fff1f2", cursor: "pointer", color: "#dc2626",
-                    }}>削除</button>
+                  <div className="flex gap-1.5">
+                    <button onClick={() => loadDateEntry(log.date)} className="text-xs px-2.5 py-1 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer text-gray-700 transition-all duration-150 active:scale-95">編集</button>
+                    <button onClick={() => deleteLog(log.id)} className="text-xs px-2.5 py-1 border border-red-200 rounded-lg bg-red-50 cursor-pointer text-red-600 transition-all duration-150 active:scale-95">削除</button>
                   </div>
                 </div>
               </div>
@@ -1171,73 +1111,74 @@ export default function App() {
       <div>
         {/* Score Trend */}
         {scoredLogs.length > 0 && (
-          <Card title="📈 健康スコア推移（直近）">
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 80 }}>
+          <AppCard title="📈 健康スコア推移（直近）">
+            <div className="flex items-end gap-1 h-20">
               {scoredLogs.map(l => (
-                <div key={l.id} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <div style={{ fontSize: 9, color: l.grade?.color, fontWeight: 700 }}>{l.score}</div>
-                  <div style={{
-                    width: "100%",
-                    height: `${(l.score / maxScore) * 64}px`,
-                    background: l.grade?.color || "#9ca3af",
-                    borderRadius: "3px 3px 0 0",
-                    minHeight: 4,
-                  }} />
-                  <div style={{ fontSize: 8, color: "#9ca3af", marginTop: 2 }}>{l.date.slice(5)}</div>
+                <div key={l.id} className="flex-1 flex flex-col items-center">
+                  <div className="text-[9px] font-bold" style={{ color: l.grade?.color }}>{l.score}</div>
+                  <div
+                    className="w-full rounded-t-sm min-h-[4px]"
+                    style={{
+                      height: `${(l.score / maxScore) * 64}px`,
+                      background: l.grade?.color || "#9ca3af",
+                    }}
+                  />
+                  <div className="text-[8px] text-gray-400 mt-0.5">{l.date.slice(5)}</div>
                 </div>
               ))}
             </div>
-          </Card>
+          </AppCard>
         )}
 
         {/* Stats */}
-        <Card title="📊 直近7日間の平均">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+        <AppCard title="📊 直近7日間の平均">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { label: "歩数", val: avg7steps ? `${avg7steps.toLocaleString()}歩` : "—" },
               { label: "睡眠", val: avg7sleep ? `${avg7sleep}h` : "—" },
               { label: "体重", val: avg7weight ? `${avg7weight}kg` : "—" },
             ].map(({ label, val }) => (
-              <div key={label} style={{ textAlign: "center", padding: 10, background: "#f9fafb", borderRadius: 8 }}>
-                <div style={{ fontSize: 11, color: "#6b7280" }}>{label}</div>
-                <div style={{ fontWeight: 700, color: "#374151", marginTop: 4 }}>{val}</div>
+              <div key={label} className="text-center p-3 bg-gray-50 rounded-xl border border-gray-100">
+                <div className="text-xs text-gray-500">{label}</div>
+                <div className="font-bold text-sm text-gray-900 mt-1">{val}</div>
               </div>
             ))}
           </div>
-        </Card>
+        </AppCard>
 
         {/* Score Grade Distribution */}
         {scoredLogs.length > 0 && (
-          <Card title="🏅 グレード分布">
+          <AppCard title="🏅 グレード分布">
             {GRADE_THRESHOLDS.map(g => {
               const count = scoredLogs.filter(l => l.grade?.label === g.label).length;
               return (
-                <div key={g.label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <div style={{ width: 24, fontWeight: 700, color: g.color, fontSize: 14 }}>{g.label}</div>
-                  <div style={{ flex: 1, background: "#f3f4f6", borderRadius: 4, height: 16, overflow: "hidden" }}>
+                <div key={g.label} className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 font-bold text-sm" style={{ color: g.color }}>{g.label}</div>
+                  <div className="flex-1 bg-gray-100 rounded h-4 overflow-hidden">
                     {count > 0 && (
-                      <div style={{
-                        width: `${(count / scoredLogs.length) * 100}%`,
-                        height: "100%",
-                        background: g.color,
-                        borderRadius: 4,
-                      }} />
+                      <div
+                        className="h-full rounded"
+                        style={{
+                          width: `${(count / scoredLogs.length) * 100}%`,
+                          background: g.color,
+                        }}
+                      />
                     )}
                   </div>
-                  <div style={{ fontSize: 12, color: "#374151", width: 30, textAlign: "right" }}>{count}日</div>
+                  <div className="text-xs text-gray-700 w-[30px] text-right">{count}日</div>
                 </div>
               );
             })}
-          </Card>
+          </AppCard>
         )}
 
         {/* Streak */}
-        <Card>
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 36, fontWeight: 900 }}>🔥 {streak}</div>
-            <div style={{ color: "#6b7280", fontSize: 14 }}>日連続記録</div>
+        <AppCard>
+          <div className="text-center py-2">
+            <div className="text-5xl font-black text-gray-900">🔥 {streak}</div>
+            <div className="text-sm text-gray-500 mt-2">日連続記録</div>
           </div>
-        </Card>
+        </AppCard>
       </div>
     );
   };
@@ -1272,76 +1213,74 @@ export default function App() {
 
     return (
       <div>
-        <Card title="⚙️ 個人設定">
+        <AppCard title="⚙️ 個人設定">
           <FieldRow label="身長 (cm)">
             <NumberInput value={localSettings.height || ""} onChange={v => setSetting("height", v)} placeholder="例: 170" unit="cm" />
           </FieldRow>
           <FieldRow label="目標体重 (kg)" hint="体重スコア計算に使用">
             <NumberInput value={localSettings.targetWeight || ""} onChange={v => setSetting("targetWeight", v)} placeholder="例: 65.0" unit="kg" step={0.1} />
           </FieldRow>
-          <button
+          <Button
             onClick={() => { setSettings(localSettings); alert("保存しました"); }}
-            style={{
-              width: "100%", padding: 10, background: "#2563eb", color: "#fff",
-              border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer",
-            }}
+            className="w-full rounded-xl min-h-[44px] font-semibold"
           >
             設定を保存
-          </button>
-        </Card>
+          </Button>
+        </AppCard>
 
-        <Card title="📁 データ管理">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <button
+        <AppCard title="📁 データ管理">
+          <div className="flex flex-col gap-2.5">
+            <Button
               onClick={exportData}
-              style={{ padding: 10, background: "#16a34a", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              className="w-full bg-green-700 hover:bg-green-800"
             >
               JSONエクスポート
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => fileRef.current?.click()}
-              style={{ padding: 10, background: "#7c3aed", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              className="w-full bg-violet-700 hover:bg-violet-800"
             >
               JSONインポート
-            </button>
-            <input type="file" accept=".json" ref={fileRef} onChange={importData} style={{ display: "none" }} />
-            <button
+            </Button>
+            <input type="file" accept=".json" ref={fileRef} onChange={importData} className="hidden" />
+            <Button
               onClick={() => {
                 if (confirm("全データを削除しますか？この操作は元に戻せません。")) {
                   setLogs([]);
                   alert("削除しました");
                 }
               }}
-              style={{ padding: 10, background: "#dc2626", color: "#fff", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              variant="destructive"
+              className="w-full"
             >
               全データ削除
-            </button>
+            </Button>
           </div>
-        </Card>
+        </AppCard>
 
-        <Card title="📖 スコア説明">
-          <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.8 }}>
-            <div style={{ marginBottom: 8 }}>
+        <AppCard title="📖 スコア説明">
+          <div className="text-sm text-gray-700 leading-6">
+            <div className="mb-2">
               健康スコアは<strong>20項目</strong>の記録を元に算出します。<br />
               各項目は0〜2段階で評価され、係数(★★★=3, ★★☆=2)で重み付けされます。
             </div>
-            <div style={{ marginBottom: 6 }}>スコア = Σ(段階×係数) ÷ Σ(最大段階×係数) × 100</div>
-            <div style={{ marginBottom: 4 }}>
+            <div className="mb-2 text-xs text-gray-500 font-mono">スコア = Σ(段階×係数) ÷ Σ(最大段階×係数) × 100</div>
+            <div className="mb-2 flex flex-wrap gap-2">
               {GRADE_THRESHOLDS.map(g => (
-                <span key={g.label} style={{ marginRight: 10 }}>
-                  <strong style={{ color: g.color }}>{g.label}</strong>: {g.min}点以上
+                <span key={g.label} className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ color: g.color, background: `${g.color}18` }}>
+                  {g.label}: {g.min}点以上
                 </span>
               ))}
             </div>
-            <div style={{ color: "#9ca3af", fontSize: 11 }}>※ 10項目以上記録で表示 | 休日は座位・残業除外</div>
+            <div className="text-xs text-gray-400">※ 10項目以上記録で表示 | 休日は座位・残業除外</div>
           </div>
-        </Card>
+        </AppCard>
       </div>
     );
   };
 
   // ─── Tab Bar ─────────────────────────────────────────────────
-  const tabs = [
+  const tabItems = [
     { id: "today", label: "記録" },
     { id: "history", label: "履歴" },
     { id: "insight", label: "分析" },
@@ -1349,21 +1288,21 @@ export default function App() {
   ];
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: "#f9fafb", minHeight: "100vh" }}>
+    <div className="max-w-[480px] mx-auto font-sans min-h-screen bg-gray-50">
       {/* Top Bar */}
-      <div style={{ background: "#fff", padding: "14px 16px 8px", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", position: "sticky", top: 0, zIndex: 50 }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "#1f2937" }}>🌿 HealthLog</div>
-        <div style={{ display: "flex", gap: 0, marginTop: 8, borderBottom: "1px solid #e5e7eb" }}>
-          {tabs.map(t => (
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100 px-4 pt-3.5 pb-0">
+        <div className="text-lg font-extrabold text-gray-900">🌿 HealthLog</div>
+        <div className="flex mt-2 border-b border-gray-200">
+          {tabItems.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              style={{
-                flex: 1, padding: "7px 0", background: "none", border: "none", cursor: "pointer",
-                fontSize: 13, fontWeight: tab === t.id ? 700 : 400,
-                color: tab === t.id ? "#2563eb" : "#6b7280",
-                borderBottom: tab === t.id ? "2px solid #2563eb" : "2px solid transparent",
-              }}
+              className={cn(
+                "flex-1 py-2.5 bg-transparent border-none cursor-pointer text-sm transition-colors",
+                tab === t.id
+                  ? "font-bold text-blue-600 border-b-2 border-blue-600"
+                  : "font-normal text-gray-500 border-b-2 border-transparent"
+              )}
             >
               {t.label}
             </button>
@@ -1372,7 +1311,7 @@ export default function App() {
       </div>
 
       {/* Content */}
-      <div style={{ padding: "12px 12px 0" }}>
+      <div className="px-4 pt-4">
         {tab === "today" && <TodayTab />}
         {tab === "history" && <HistoryTab />}
         {tab === "insight" && <InsightTab />}
