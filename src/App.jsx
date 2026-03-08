@@ -406,6 +406,22 @@ function NumberInput({ value, onChange, placeholder, unit, min, max, step = 1 })
   );
 }
 
+function ImeTextarea({ value, onChange, ...props }) {
+  const [local, setLocal] = useState(value);
+  const composing = useRef(false);
+  useEffect(() => { if (!composing.current) setLocal(value); }, [value]);
+  return (
+    <textarea
+      {...props}
+      value={local}
+      onChange={e => setLocal(e.target.value)}
+      onCompositionStart={() => { composing.current = true; }}
+      onCompositionEnd={e => { composing.current = false; onChange(e.target.value); }}
+      onBlur={e => { if (!composing.current) onChange(e.target.value); }}
+    />
+  );
+}
+
 function AppCard({ title, children, accent }) {
   return (
     <div
@@ -831,11 +847,11 @@ export default function App() {
       {/* Sleep */}
       <AppCard title="😴 睡眠" accent="#7c3aed">
         <div className="flex gap-3 mb-4">
-          <FieldRow label="就寝時刻">
-            <Input type="time" value={entry.bedtime} onChange={e => set("bedtime", e.target.value)} className="h-10 text-sm" />
-          </FieldRow>
           <FieldRow label="起床時刻">
             <Input type="time" value={entry.wakeup} onChange={e => set("wakeup", e.target.value)} className="h-10 text-sm" />
+          </FieldRow>
+          <FieldRow label="就寝時刻">
+            <Input type="time" value={entry.bedtime} onChange={e => set("bedtime", e.target.value)} className="h-10 text-sm" />
           </FieldRow>
         </div>
         {sleepH !== null && (
@@ -923,16 +939,30 @@ export default function App() {
             onChange={v => set("breakfast", v)}
           />
         </FieldRow>
-        <FieldRow label={`コーヒー (${entry.coffee}杯)`}>
-          <Slider
-            min={0}
-            max={8}
-            step={1}
-            value={[entry.coffee]}
-            onValueChange={([v]) => set("coffee", v)}
-            className="w-full"
-          />
-          <div className="flex justify-between text-[11px] text-gray-400 mt-1">
+        <FieldRow label="コーヒー">
+          <div className="flex items-center gap-3 mb-1">
+            <Slider
+              min={0}
+              max={8}
+              step={1}
+              value={[entry.coffee]}
+              onValueChange={([v]) => set("coffee", v)}
+              className="flex-1"
+            />
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                max={8}
+                step={1}
+                value={entry.coffee}
+                onChange={e => set("coffee", Math.min(8, Math.max(0, Number(e.target.value) || 0)))}
+                className="w-14 text-center px-2 py-1.5 border border-gray-200 rounded-lg text-sm outline-none focus:border-blue-400"
+              />
+              <span className="text-sm text-gray-500">杯</span>
+            </div>
+          </div>
+          <div className="flex justify-between text-[11px] text-gray-400">
             <span>0杯</span><span>4杯</span><span>8杯</span>
           </div>
           <CoffeeInfoPanel />
@@ -1016,9 +1046,9 @@ export default function App() {
 
       {/* Memo */}
       <AppCard title="📝 メモ">
-        <textarea
+        <ImeTextarea
           value={entry.memo}
-          onChange={e => set("memo", e.target.value)}
+          onChange={v => set("memo", v)}
           placeholder="今日の気づき・体調メモ…"
           rows={3}
           className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm outline-none box-border resize-y focus:border-blue-400 focus:ring-1 focus:ring-blue-200 transition-colors"
