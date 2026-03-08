@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { fetchLogs, fetchSettings, upsertLog, deleteLog as deleteLogDB, saveSettings as saveSettingsDB } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -687,54 +688,66 @@ function XPostPanel({ entry, score, grade }) {
 
 // ─── Main App ─────────────────────────────────────────────────
 export default function App() {
-  const [logs, setLogs] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
-  });
-  const [settings, setSettings] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}; }
-    catch { return {}; }
-  });
-  const [entry, setEntry] = useState(() => {
-    const today = todayStr();
-    const existing = (JSON.parse(localStorage.getItem(STORAGE_KEY)) || []).find(l => l.date === today);
-    return existing ? { ...defaultEntry(today), ...existing } : defaultEntry(today);
-  });
+  const [logs, setLogs] = useState([]);
+  const [settings, setSettings] = useState({});
+  const [entry, setEntry] = useState(() => defaultEntry(todayStr()));
   const [tab, setTab] = useState("today");
+  const [loading, setLoading] = useState(true);
   const fileRef = useRef(null);
 
   const isPastEntry = entry.date !== todayStr();
 
+  // Supabase から初期データ取得
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
-  }, [logs]);
-
-  useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  }, [settings]);
+    async function loadData() {
+      try {
+        const [fetchedLogs, fetchedSettings] = await Promise.all([fetchLogs(), fetchSettings()]);
+        setLogs(fetchedLogs);
+        setSettings(fetchedSettings);
+        const today = todayStr();
+        const existing = fetchedLogs.find(l => l.date === today);
+        setEntry(existing ? { ...defaultEntry(today), ...existing } : defaultEntry(today));
+      } catch (e) {
+        console.error("データ取得エラー:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   const set = (field, val) => setEntry(e => ({ ...e, [field]: val }));
 
-  function saveEntry() {
-    setLogs(prev => {
-      const idx = prev.findIndex(l => l.date === entry.date);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = { ...entry, id: prev[idx].id };
-        return next;
+  async function saveEntry() {
+    try {
+      await upsertLog(entry);
+      setLogs(prev => {
+        const idx = prev.findIndex(l => l.date === entry.date);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...entry };
+          return next;
+        }
+        return [{ ...entry }, ...prev];
+      });
+      if (!isPastEntry) {
+        alert("保存しました！");
+      } else {
+        alert(`${entry.date} のデータを更新しました`);
       }
-      return [{ ...entry, id: Date.now() }, ...prev];
-    });
-    if (!isPastEntry) {
-      alert("保存しました！");
-    } else {
-      alert(`${entry.date} のデータを更新しました`);
+    } catch (e) {
+      alert("保存に失敗しました: " + e.message);
     }
   }
 
-  function deleteLog(id) {
+  async function deleteLog(date) {
     if (!confirm("この記録を削除しますか？")) return;
-    setLogs(prev => prev.filter(l => l.id !== id));
+    try {
+      await deleteLogDB(date);
+      setLogs(prev => prev.filter(l => l.date !== date));
+    } catch (e) {
+      alert("削除に失敗しました: " + e.message);
+    }
   }
 
   function loadDateEntry(date) {
@@ -1079,7 +1092,7 @@ export default function App() {
                   <ScoreBadge score={score} grade={grade} size="sm" />
                   <div className="flex gap-1.5">
                     <button onClick={() => loadDateEntry(log.date)} className="text-xs px-2.5 py-1 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer text-gray-700 transition-all duration-150 active:scale-95">編集</button>
-                    <button onClick={() => deleteLog(log.id)} className="text-xs px-2.5 py-1 border border-red-200 rounded-lg bg-red-50 cursor-pointer text-red-600 transition-all duration-150 active:scale-95">削除</button>
+                    <button onClick={() => deleteLog(log.date)} className="text-xs px-2.5 py-1 border border-red-200 rounded-lg bg-red-50 cursor-pointer text-red-600 transition-all duration-150 active:scale-95">削除</button>
                   </div>
                 </div>
               </div>
@@ -1221,7 +1234,7 @@ export default function App() {
             <NumberInput value={localSettings.targetWeight || ""} onChange={v => setSetting("targetWeight", v)} placeholder="例: 65.0" unit="kg" step={0.1} />
           </FieldRow>
           <Button
-            onClick={() => { setSettings(localSettings); alert("保存しました"); }}
+            onClick={async () => { try { await saveSettingsDB(localSettings); setSettings(localSettings); alert("保存しました"); } catch(e) { alert("保存失敗: " + e.message); } }}
             className="w-full rounded-xl min-h-[44px] font-semibold"
           >
             設定を保存
@@ -1286,6 +1299,12 @@ export default function App() {
     { id: "insight", label: "分析" },
     { id: "settings", label: "設定" },
   ];
+
+  if (loading) return (
+    <div className="max-w-[480px] mx-auto font-sans min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-gray-400 text-sm">読み込み中...</div>
+    </div>
+  );
 
   return (
     <div className="max-w-[480px] mx-auto font-sans min-h-screen bg-gray-50">
